@@ -16,6 +16,27 @@ async function api(url, opts = {}) {
   return d;
 }
 
+function resizeImage(file, max = 400) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      const s = Math.min(1, max / Math.max(img.width, img.height));
+      const c = document.createElement('canvas');
+      c.width = Math.round(img.width * s);
+      c.height = Math.round(img.height * s);
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(url);
+      resolve(c.toDataURL('image/jpeg', 0.7));
+    };
+    img.onerror = () => reject(new Error('File bukan gambar yang valid'));
+    img.src = url;
+  });
+}
+
+const Thumb = ({ src }) =>
+  src ? <img className="thumb" src={src} alt="" /> : <div className="thumb ph">🍽️</div>;
+
 export default function Home() {
   const [tab, setTab] = useState('order');
   const [menu, setMenu] = useState([]);
@@ -75,7 +96,10 @@ function Order({ menu, flash }) {
       <div className="grid">
         {menu.map((m) => (
           <div className="card row" key={m.id}>
-            <div><b>{m.name}</b><div className="muted">{rp(m.price)}</div></div>
+            <div className="row" style={{ justifyContent: 'flex-start' }}>
+              <Thumb src={m.image} />
+              <div><b>{m.name}</b><div className="muted">{rp(m.price)}</div></div>
+            </div>
             <div className="row">
               <button onClick={() => change(m.id, -1)}>−</button>
               <b style={{ minWidth: 24, textAlign: 'center' }}>{cart[m.id] || 0}</b>
@@ -97,13 +121,23 @@ function Order({ menu, flash }) {
 }
 
 function MenuManager({ menu, reload, flash }) {
-  const empty = { id: null, name: '', price: '' };
+  const empty = { id: null, name: '', price: '', image: null };
   const [f, setF] = useState(empty);
+
+  const pick = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    try {
+      const image = await resizeImage(file);
+      setF((p) => ({ ...p, image }));
+    } catch (err) { flash(err.message); }
+  };
 
   const submit = async (e) => {
     e.preventDefault();
     try {
-      const body = { name: f.name, price: Number(f.price) };
+      const body = { name: f.name, price: Number(f.price), image: f.image };
       if (f.id) await api('/api/menu/' + f.id, { method: 'PUT', body });
       else await api('/api/menu', { method: 'POST', body });
       setF(empty); await reload();
@@ -118,18 +152,28 @@ function MenuManager({ menu, reload, flash }) {
 
   return (
     <div>
-      <form className="form" onSubmit={submit}>
+      <form className="mform card" onSubmit={submit}>
+        <div className="row" style={{ justifyContent: 'flex-start' }}>
+          <Thumb src={f.image} />
+          <input type="file" accept="image/*" onChange={pick} />
+          {f.image && <button type="button" className="danger" onClick={() => setF({ ...f, image: null })}>Hapus gambar</button>}
+        </div>
         <input placeholder="Nama menu" value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} required />
         <input placeholder="Harga" type="number" min="0" step="1" inputMode="numeric" value={f.price}
           onChange={(e) => setF({ ...f, price: e.target.value })} required />
-        <button className="primary" type="submit">{f.id ? 'Simpan' : 'Tambah'}</button>
+        <div className="row">
+          <button className="primary" type="submit" style={{ flex: 1 }}>{f.id ? 'Simpan perubahan' : 'Tambah menu'}</button>
+          {f.id && <button type="button" onClick={() => setF(empty)}>Batal edit</button>}
+        </div>
       </form>
-      {f.id && <button style={{ marginBottom: 10 }} onClick={() => setF(empty)}>Batal edit</button>}
       {menu.map((m) => (
         <div className="card row" key={m.id}>
-          <div><b>{m.name}</b><div className="muted">{rp(m.price)}</div></div>
+          <div className="row" style={{ justifyContent: 'flex-start' }}>
+            <Thumb src={m.image} />
+            <div><b>{m.name}</b><div className="muted">{rp(m.price)}</div></div>
+          </div>
           <div className="row">
-            <button onClick={() => setF({ id: m.id, name: m.name, price: String(m.price) })}>Edit</button>
+            <button onClick={() => { setF({ id: m.id, name: m.name, price: String(m.price), image: m.image }); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>Edit</button>
             <button className="danger" onClick={() => del(m)}>Hapus</button>
           </div>
         </div>
