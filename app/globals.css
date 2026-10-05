@@ -1,22 +1,179 @@
-* { box-sizing: border-box; }
-body { margin: 0; font-family: system-ui, sans-serif; background: #f6f5f1; color: #222; }
-main { max-width: 760px; margin: 0 auto; padding: 16px; }
-h1 { font-size: 20px; margin: 0 0 12px; }
-nav { display: flex; gap: 6px; margin-bottom: 14px; }
-nav button { flex: 1; }
-button { padding: 10px 14px; border: 1px solid #c9c6bb; background: #fff; border-radius: 8px; font-size: 15px; cursor: pointer; }
-button.on, button.primary { background: #1f6f4a; color: #fff; border-color: #1f6f4a; }
-button.danger { color: #b3261e; }
-input { padding: 10px; border: 1px solid #c9c6bb; border-radius: 8px; font-size: 15px; width: 100%; }
-.card { background: #fff; border: 1px solid #e3e0d6; border-radius: 10px; padding: 12px; margin-bottom: 10px; }
-.row { display: flex; align-items: center; gap: 8px; justify-content: space-between; }
-.grid { display: grid; gap: 8px; }
+:root {
+  --bg: #f4f1ea;
+  --card: #ffffff;
+  --ink: #1f2a24;
+  --muted: #7a8379;
+  --line: #e7e2d6;
+  --brand: #1f7a50;
+  --brand-dark: #165c3c;
+  --brand-soft: #e4f2ea;
+  --danger: #c0392b;
+  --danger-soft: #fdecea;
+  --radius: 16px;
+  --shadow: 0 2px 10px rgba(31, 42, 36, 0.07);
+}
+
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  color: var(--ink);
+  background: linear-gradient(180deg, #e4f2ea 0, var(--bg) 220px) no-repeat, var(--bg);
+  min-height: 100vh;
+}
+
+main { max-width: 760px; margin: 0 auto; padding: 18px 14px 80px; }
+
+h1 {
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.3px;
+  margin: 4px 2px 14px;
+  color: var(--brand-dark);
+}
+
+/* Navigasi tab */
+nav {
+  display: flex;
+  gap: 4px;
+  padding: 5px;
+  margin-bottom: 16px;
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(8px);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  box-shadow: var(--shadow);
+  position: sticky;
+  top: 8px;
+  z-index: 10;
+}
+nav button {
+  flex: 1;
+  border: none;
+  background: transparent;
+  border-radius: 999px;
+  padding: 10px 8px;
+  font-weight: 600;
+  color: var(--muted);
+}
+nav button.on {
+  background: var(--brand);
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(31, 122, 80, 0.35);
+}
+
+/* Tombol */
+button {
+  min-height: 42px;
+  padding: 9px 16px;
+  border: 1px solid var(--line);
+  background: #fff;
+  color: var(--ink);
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.08s ease, background 0.15s ease, box-shadow 0.15s ease;
+}
+button:hover:not(:disabled) { background: #f7f5ef; }
+button:active:not(:disabled) { transform: scale(0.96); }
+button:disabled { opacity: 0.5; cursor: not-allowed; }
+button.primary {
+  background: var(--brand);
+  border-color: var(--brand);
+  color: #fff;
+  box-shadow: 0 3px 10px rgba(31, 122, 80, 0.3);
+}
+button.primary:hover:not(:disabled) { background: var(--brand-dark); }
+button.danger { color: var(--danger); background: var(--danger-soft); border-color: transparent; }
+button.danger:hover:not(:disabled) { background: #fadbd8; }
+
+/* Input */
+input {
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 1.5px solid var(--line);
+  border-radius: 12px;
+  font-size: 15px;
+  background: #fff;
+  color: var(--ink);
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+input:focus { outline: none; border-color: var(--brand); box-shadow: 0 0 0 3px var(--brand-soft); }
+input[type='file'] { padding: 8px; font-size: 13px; background: #faf8f3; border-style: dashed; }
+
+/* Kartu */
+.card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  margin-bottom: 10px;
+  box-shadow: var(--shadow);
+}
+.card b { font-weight: 700; }
+
+.row { display: flex; align-items: center; gap: 10px; justify-content: space-between; }
+.grid { display: grid; gap: 10px; margin-bottom: 12px; }
+.grid .card { margin-bottom: 0; }
 .form { display: grid; grid-template-columns: 2fr 1fr auto; gap: 8px; margin-bottom: 12px; }
-table { width: 100%; border-collapse: collapse; font-size: 14px; }
-th, td { text-align: left; padding: 6px 4px; border-bottom: 1px solid #eee; }
-.r { text-align: right; }
-.muted { color: #777; font-size: 13px; }
-.msg { background: #fff3cd; padding: 8px 12px; border-radius: 8px; margin-bottom: 10px; }
-.mform { display: grid; gap: 8px; }
-.thumb { width: 56px; height: 56px; border-radius: 8px; object-fit: cover; background: #eee; flex: none; }
-.ph { display: flex; align-items: center; justify-content: center; font-size: 22px; }
+.mform { display: grid; gap: 10px; background: var(--brand-soft); border-color: #cfe6d8; }
+
+/* Gambar menu */
+.thumb {
+  width: 64px;
+  height: 64px;
+  border-radius: 14px;
+  object-fit: cover;
+  background: #ece8dc;
+  flex: none;
+  border: 1px solid var(--line);
+}
+.ph {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 26px;
+  background: linear-gradient(135deg, #f1ede2, #e6e0d0);
+}
+
+/* Teks bantu */
+.muted { color: var(--muted); font-size: 13px; margin-top: 2px; }
+.card .muted + button, .card > .row + .muted { margin-top: 6px; }
+
+/* Pesan notifikasi */
+.msg {
+  background: var(--brand);
+  color: #fff;
+  padding: 11px 16px;
+  border-radius: 12px;
+  margin-bottom: 12px;
+  font-weight: 600;
+  box-shadow: var(--shadow);
+  animation: pop 0.2s ease;
+}
+@keyframes pop { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
+
+/* Tabel laporan */
+table { width: 100%; border-collapse: collapse; font-size: 14px; margin-top: 10px; }
+th {
+  text-align: left;
+  padding: 8px 6px;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: var(--muted);
+  border-bottom: 2px solid var(--line);
+}
+td { text-align: left; padding: 9px 6px; border-bottom: 1px solid var(--line); }
+tbody tr:last-child td { border-bottom: none; }
+th.r, td.r, .r { text-align: right; }
+
+@media (max-width: 480px) {
+  main { padding: 12px 10px 80px; }
+  .form { grid-template-columns: 1fr; }
+  .thumb { width: 56px; height: 56px; }
+  button { padding: 9px 12px; }
+}
