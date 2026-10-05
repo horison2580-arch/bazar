@@ -17,3 +17,6 @@ th, td { text-align: left; padding: 6px 4px; border-bottom: 1px solid #eee; }
 .r { text-align: right; }
 .muted { color: #777; font-size: 13px; }
 .msg { background: #fff3cd; padding: 8px 12px; border-radius: 8px; margin-bottom: 10px; }
+.mform { display: grid; gap: 8px; }
+.thumb { width: 56px; height: 56px; border-radius: 8px; object-fit: cover; background: #eee; flex: none; }
+.ph { display: flex; align-items: center; justify-content: center; font-size: 22px; }
