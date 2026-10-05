@@ -1,0 +1,19 @@
+* { box-sizing: border-box; }
+body { margin: 0; font-family: system-ui, sans-serif; background: #f6f5f1; color: #222; }
+main { max-width: 760px; margin: 0 auto; padding: 16px; }
+h1 { font-size: 20px; margin: 0 0 12px; }
+nav { display: flex; gap: 6px; margin-bottom: 14px; }
+nav button { flex: 1; }
+button { padding: 10px 14px; border: 1px solid #c9c6bb; background: #fff; border-radius: 8px; font-size: 15px; cursor: pointer; }
+button.on, button.primary { background: #1f6f4a; color: #fff; border-color: #1f6f4a; }
+button.danger { color: #b3261e; }
+input { padding: 10px; border: 1px solid #c9c6bb; border-radius: 8px; font-size: 15px; width: 100%; }
+.card { background: #fff; border: 1px solid #e3e0d6; border-radius: 10px; padding: 12px; margin-bottom: 10px; }
+.row { display: flex; align-items: center; gap: 8px; justify-content: space-between; }
+.grid { display: grid; gap: 8px; }
+.form { display: grid; grid-template-columns: 2fr 1fr auto; gap: 8px; margin-bottom: 12px; }
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+th, td { text-align: left; padding: 6px 4px; border-bottom: 1px solid #eee; }
+.r { text-align: right; }
+.muted { color: #777; font-size: 13px; }
+.msg { background: #fff3cd; padding: 8px 12px; border-radius: 8px; margin-bottom: 10px; }
