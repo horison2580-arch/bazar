@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 const rp = (n) => 'Rp ' + Number(n).toLocaleString('id-ID');
 const todayStr = () => new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Jakarta' });
 const fmtTime = (t) => new Date(t).toLocaleString('id-ID', { timeZone: 'Asia/Jakarta', dateStyle: 'short', timeStyle: 'short' });
+const imgUrl = (m) => (m.has_image ? `/api/menu/${m.id}/image?v=${m.v}` : null);
 
 async function api(url, opts = {}) {
   const r = await fetch(url, {
@@ -35,18 +36,32 @@ function resizeImage(file, max = 400) {
 }
 
 const Thumb = ({ src }) =>
-  src ? <img className="thumb" src={src} alt="" /> : <div className="thumb ph">🍽️</div>;
+  src
+    ? <img className="thumb" src={src} alt="" width="64" height="64" loading="lazy" decoding="async" />
+    : <div className="thumb ph">🍽️</div>;
 
 export default function Home() {
   const [tab, setTab] = useState('order');
   const [menu, setMenu] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [msg, setMsg] = useState('');
 
   const flash = (t) => { setMsg(t); setTimeout(() => setMsg(''), 3500); };
   const reload = async () => {
-    try { setMenu(await api('/api/menu')); } catch (e) { flash(e.message); }
+    try {
+      const d = await api('/api/menu');
+      setMenu(d);
+      try { localStorage.setItem('menu-cache', JSON.stringify(d)); } catch {}
+    } catch (e) { flash(e.message); }
+    setLoading(false);
   };
-  useEffect(() => { reload(); }, []);
+  useEffect(() => {
+    try {
+      const c = localStorage.getItem('menu-cache');
+      if (c) { setMenu(JSON.parse(c)); setLoading(false); }
+    } catch {}
+    reload();
+  }, []); // eslint-disable-line
 
   return (
     <main>
@@ -57,17 +72,16 @@ export default function Home() {
         ))}
       </nav>
       {msg && <div className="msg">{msg}</div>}
-      {tab === 'order' && <Order menu={menu} flash={flash} />}
+      {tab === 'order' && <Order menu={menu} loading={loading} flash={flash} />}
       {tab === 'menu' && <MenuManager menu={menu} reload={reload} flash={flash} />}
       {tab === 'report' && <Report flash={flash} />}
     </main>
   );
 }
 
-function Order({ menu, flash }) {
+function Order({ menu, loading, flash }) {
   const [cart, setCart] = useState({});
   const [customer, setCustomer] = useState('');
-  const [busy, setBusy] = useState(false);
 
   const change = (id, d) => setCart((c) => {
     const q = (c[id] || 0) + d;
@@ -81,23 +95,27 @@ function Order({ menu, flash }) {
   const save = async () => {
     const items = Object.entries(cart).map(([id, qty]) => ({ id: Number(id), qty }));
     if (!items.length) return flash('Pilih menu terlebih dahulu');
-    setBusy(true);
+    const backup = { cart, customer };
+    setCart({}); setCustomer('');
+    flash('Menyimpan…');
     try {
-      await api('/api/orders', { method: 'POST', body: { customer, items } });
-      setCart({}); setCustomer('');
+      await api('/api/orders', { method: 'POST', body: { customer: backup.customer, items } });
       flash('Pesanan tersimpan ✔');
-    } catch (e) { flash(e.message); }
-    setBusy(false);
+    } catch (e) {
+      setCart(backup.cart); setCustomer(backup.customer);
+      flash('Gagal menyimpan: ' + e.message);
+    }
   };
 
-  if (!menu.length) return <p className="muted">Belum ada menu. Tambahkan dulu di tab Menu.</p>;
+  if (!menu.length)
+    return <p className="muted">{loading ? 'Memuat menu…' : 'Belum ada menu. Tambahkan dulu di tab Menu.'}</p>;
   return (
     <div>
       <div className="grid">
         {menu.map((m) => (
           <div className="card row" key={m.id}>
             <div className="row" style={{ justifyContent: 'flex-start' }}>
-              <Thumb src={m.image} />
+              <Thumb src={imgUrl(m)} />
               <div><b>{m.name}</b><div className="muted">{rp(m.price)}</div></div>
             </div>
             <div className="row">
@@ -113,7 +131,7 @@ function Order({ menu, flash }) {
           onChange={(e) => setCustomer(e.target.value)} />
         <div className="row" style={{ marginTop: 10 }}>
           <b>Total: {rp(total)}</b>
-          <button className="primary" disabled={busy} onClick={save}>{busy ? 'Menyimpan…' : 'Simpan Pesanan'}</button>
+          <button className="primary" onClick={save}>Simpan Pesanan</button>
         </div>
       </div>
     </div>
@@ -137,7 +155,10 @@ function MenuManager({ menu, reload, flash }) {
   const submit = async (e) => {
     e.preventDefault();
     try {
-      const body = { name: f.name, price: Number(f.price), image: f.image };
+      const body = { name: f.name, price: Number(f.price) };
+      if (!f.image) body.image = null;                       // tanpa gambar / gambar dihapus
+      else if (f.image.startsWith('data:')) body.image = f.image; // gambar baru
+      // selain itu: gambar lama tidak diubah (tidak dikirim)
       if (f.id) await api('/api/menu/' + f.id, { method: 'PUT', body });
       else await api('/api/menu', { method: 'POST', body });
       setF(empty); await reload();
@@ -169,11 +190,11 @@ function MenuManager({ menu, reload, flash }) {
       {menu.map((m) => (
         <div className="card row" key={m.id}>
           <div className="row" style={{ justifyContent: 'flex-start' }}>
-            <Thumb src={m.image} />
+            <Thumb src={imgUrl(m)} />
             <div><b>{m.name}</b><div className="muted">{rp(m.price)}</div></div>
           </div>
           <div className="row">
-            <button onClick={() => { setF({ id: m.id, name: m.name, price: String(m.price), image: m.image }); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>Edit</button>
+            <button onClick={() => { setF({ id: m.id, name: m.name, price: String(m.price), image: imgUrl(m) }); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>Edit</button>
             <button className="danger" onClick={() => del(m)}>Hapus</button>
           </div>
         </div>
