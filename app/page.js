@@ -207,11 +207,23 @@ function Report({ flash }) {
   const [from, setFrom] = useState(todayStr());
   const [to, setTo] = useState(todayStr());
   const [orders, setOrders] = useState(null);
+  const [capital, setCapital] = useState([]);
+  const [known, setKnown] = useState({});
+  const [m, setM] = useState({ name: '', price: '', qty: 1, date: todayStr() });
 
   const load = async () => {
-    try { setOrders(await api(`/api/orders?from=${from}&to=${to}`)); } catch (e) { flash(e.message); }
+    try {
+      const [o, c] = await Promise.all([
+        api(`/api/orders?from=${from}&to=${to}`),
+        api(`/api/capital?from=${from}&to=${to}`),
+      ]);
+      setOrders(o); setCapital(c);
+    } catch (e) { flash(e.message); }
   };
-  useEffect(() => { load(); }, []); // eslint-disable-line
+  useEffect(() => {
+    try { setKnown(JSON.parse(localStorage.getItem('modal-prices') || '{}')); } catch {}
+    load();
+  }, []); // eslint-disable-line
 
   const { summary, grand } = useMemo(() => {
     const map = {};
@@ -227,33 +239,96 @@ function Report({ flash }) {
     return { summary: Object.values(map).sort((a, b) => b.sub - a.sub), grand };
   }, [orders]);
 
+  const modalTotal = useMemo(() => capital.reduce((s, c) => s + c.total, 0), [capital]);
+  const profit = grand - modalTotal;
+  const names = useMemo(
+    () => [...new Set([...Object.keys(known), ...capital.map((c) => c.name)])], [known, capital]);
+  const dmy = (s) => s.split('-').reverse().join('/');
+
+  const setName = (name) => setM((p) => ({
+    ...p, name, price: known[name] !== undefined ? String(known[name]) : p.price,
+  }));
+
+  const addCapital = async (e) => {
+    e.preventDefault();
+    try {
+      const unit_price = Number(m.price);
+      await api('/api/capital', { method: 'POST', body: { name: m.name, unit_price, qty: m.qty, spent_on: m.date } });
+      const k = { ...known, [m.name.trim()]: unit_price };
+      setKnown(k);
+      try { localStorage.setItem('modal-prices', JSON.stringify(k)); } catch {}
+      setM({ ...m, name: '', price: '', qty: 1 });
+      await load();
+      flash('Modal ditambahkan ✔');
+    } catch (err) { flash(err.message); }
+  };
+
+  const removeCapital = async (c) => {
+    if (!confirm(`Hapus modal "${c.name}"?`)) return;
+    try { await api('/api/capital?id=' + c.id, { method: 'DELETE' }); await load(); } catch (e) { flash(e.message); }
+  };
+
   const removeOrder = async (id) => {
     if (!confirm('Hapus pesanan ini?')) return;
     try { await api('/api/orders?id=' + id, { method: 'DELETE' }); await load(); } catch (e) { flash(e.message); }
   };
 
-  const pdf = async () => {
+  const makeDoc = async (title) => {
     const { jsPDF } = await import('jspdf');
     const autoTable = (await import('jspdf-autotable')).default;
     const doc = new jsPDF();
-    doc.setFontSize(16); doc.text('Laporan Penjualan', 14, 16);
+    doc.setFontSize(16); doc.text(title, 14, 16);
     doc.setFontSize(10); doc.text(`Periode: ${from} s/d ${to}`, 14, 23);
+    return { doc, autoTable };
+  };
+  const GREEN = [31, 111, 74];
+  const FOOT = { fillColor: [230, 230, 230], textColor: 0 };
+
+  // PDF penghasilan: TIDAK dikurangi modal
+  const pdfIncome = async () => {
+    const { doc, autoTable } = await makeDoc('Laporan Penjualan');
     autoTable(doc, {
       startY: 28,
       head: [['Menu', 'Jumlah', 'Subtotal']],
       body: summary.map((s) => [s.name, s.qty, rp(s.sub)]),
       foot: [['TOTAL', summary.reduce((a, s) => a + s.qty, 0), rp(grand)]],
-      headStyles: { fillColor: [31, 111, 74] }, footStyles: { fillColor: [230, 230, 230], textColor: 0 },
+      headStyles: { fillColor: GREEN }, footStyles: FOOT,
     });
     autoTable(doc, {
       startY: doc.lastAutoTable.finalY + 10,
       head: [['Waktu', 'Pelanggan', 'Rincian', 'Total']],
       body: orders.map((o) => [fmtTime(o.created_at), o.customer || '-',
         o.items.map((l) => `${l.qty}x ${l.name}`).join(', '), rp(o.total)]),
-      headStyles: { fillColor: [31, 111, 74] },
+      headStyles: { fillColor: GREEN },
     });
-    doc.save(`laporan-${from}_${to}.pdf`);
+    doc.save(`penghasilan-${from}_${to}.pdf`);
   };
+
+  const pdfModal = async () => {
+    const { doc, autoTable } = await makeDoc('Laporan Modal');
+    autoTable(doc, {
+      startY: 28,
+      head: [['Tanggal', 'Nama', 'Harga Satuan', 'Jumlah', 'Total']],
+      body: capital.map((c) => [dmy(c.spent_on), c.name, rp(c.unit_price), c.qty, rp(c.total)]),
+      foot: [['', '', '', 'TOTAL', rp(modalTotal)]],
+      headStyles: { fillColor: GREEN }, footStyles: FOOT,
+    });
+    doc.save(`modal-${from}_${to}.pdf`);
+  };
+
+  const pdfProfit = async () => {
+    const { doc, autoTable } = await makeDoc('Laporan Laba / Rugi');
+    autoTable(doc, {
+      startY: 28,
+      head: [['Keterangan', 'Jumlah']],
+      body: [['Total Penghasilan', rp(grand)], ['Total Modal', rp(modalTotal)]],
+      foot: [[profit >= 0 ? 'LABA BERSIH' : 'RUGI', rp(Math.abs(profit))]],
+      headStyles: { fillColor: GREEN }, footStyles: FOOT,
+    });
+    doc.save(`laba-rugi-${from}_${to}.pdf`);
+  };
+
+  const h2 = { fontSize: 17, margin: '20px 2px 8px' };
 
   return (
     <div>
@@ -266,6 +341,7 @@ function Report({ flash }) {
       </div>
       {orders === null ? <p className="muted">Memuat…</p> : (
         <>
+          <h2 style={h2}>💰 Penghasilan</h2>
           <div className="card">
             <div className="row"><b>Total penjualan</b><b>{rp(grand)}</b></div>
             <div className="muted">{orders.length} pesanan</div>
@@ -276,7 +352,55 @@ function Report({ flash }) {
               ))}</tbody>
             </table>
           </div>
-          <button className="primary" disabled={!orders.length} onClick={pdf} style={{ marginBottom: 12 }}>📄 Cetak / Unduh PDF</button>
+          <button className="primary" disabled={!orders.length} onClick={pdfIncome}>📄 Cetak PDF Penghasilan</button>
+
+          <h2 style={h2}>🛒 Modal</h2>
+          <form className="mform card" onSubmit={addCapital}>
+            <input list="modal-names" placeholder="Nama modal (mis. Puding, Ikan mas)" value={m.name}
+              onChange={(e) => setName(e.target.value)} required />
+            <datalist id="modal-names">{names.map((n) => <option key={n} value={n} />)}</datalist>
+            <input placeholder="Harga modal per satuan" type="number" min="0" step="1" inputMode="numeric"
+              value={m.price} onChange={(e) => setM({ ...m, price: e.target.value })} required />
+            <div className="row">
+              <div className="row">
+                <button type="button" onClick={() => setM((p) => ({ ...p, qty: Math.max(1, p.qty - 1) }))}>−</button>
+                <input type="number" min="1" step="1" inputMode="numeric" value={m.qty} style={{ width: 80, textAlign: 'center' }}
+                  onChange={(e) => setM((p) => ({ ...p, qty: Math.max(1, parseInt(e.target.value) || 1) }))} />
+                <button type="button" onClick={() => setM((p) => ({ ...p, qty: p.qty + 1 }))}>+</button>
+              </div>
+              <input type="date" value={m.date} style={{ width: 'auto' }} onChange={(e) => setM({ ...m, date: e.target.value })} />
+            </div>
+            <div className="row">
+              <b>Total: {rp((Number(m.price) || 0) * m.qty)}</b>
+              <button className="primary" type="submit">Tambah Modal</button>
+            </div>
+          </form>
+          {capital.map((c) => (
+            <div className="card row" key={c.id}>
+              <div>
+                <b>{c.name}</b>
+                <div className="muted">{c.qty} × {rp(c.unit_price)} · {dmy(c.spent_on)}</div>
+              </div>
+              <div className="row">
+                <b>{rp(c.total)}</b>
+                <button className="danger" onClick={() => removeCapital(c)}>Hapus</button>
+              </div>
+            </div>
+          ))}
+          <div className="card row"><b>Total modal</b><b>{rp(modalTotal)}</b></div>
+          <button className="primary" disabled={!capital.length} onClick={pdfModal}>📄 Cetak PDF Modal</button>
+
+          <h2 style={h2}>📊 Laba / Rugi</h2>
+          <div className="card">
+            <div className="row"><span>Penghasilan</span><span>{rp(grand)}</span></div>
+            <div className="row"><span>Modal</span><span>− {rp(modalTotal)}</span></div>
+            <div className="row" style={{ marginTop: 8, color: profit >= 0 ? '#1f7a50' : '#c0392b' }}>
+              <b>{profit >= 0 ? 'Laba bersih' : 'Rugi'}</b><b>{rp(Math.abs(profit))}</b>
+            </div>
+          </div>
+          <button className="primary" onClick={pdfProfit}>📄 Cetak PDF Laba/Rugi</button>
+
+          <h2 style={h2}>🧾 Daftar Pesanan</h2>
           {orders.map((o) => (
             <div className="card" key={o.id}>
               <div className="row"><b>{fmtTime(o.created_at)}{o.customer ? ' · ' + o.customer : ''}</b><b>{rp(o.total)}</b></div>
