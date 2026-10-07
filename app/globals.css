@@ -177,3 +177,45 @@ th.r, td.r, .r { text-align: right; }
   .thumb { width: 56px; height: 56px; }
   button { padding: 9px 12px; }
 }
+/* ===== Laporan ===== */
+.lbl { font-size: 12px; font-weight: 600; color: var(--muted); margin: 0 0 4px 2px; }
+.filter input { flex: 1; min-width: 0; }
+.filter button { flex: none; }
+
+.stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 4px 0 6px; }
+.stat { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 10px 12px; box-shadow: var(--shadow); }
+.stat span { display: block; font-size: 12px; color: var(--muted); margin-bottom: 2px; }
+.stat b { font-size: 15px; word-break: break-word; }
+.stat.pos { background: var(--brand-soft); border-color: #cfe6d8; }
+.stat.pos b { color: var(--brand-dark); }
+.stat.neg { background: var(--danger-soft); border-color: #f5c6c1; }
+.stat.neg b { color: var(--danger); }
+
+.sec { display: flex; align-items: baseline; justify-content: space-between; margin: 22px 2px 8px; padding-bottom: 6px; border-bottom: 2px solid var(--line); }
+.sec h2 { font-size: 17px; margin: 0; color: var(--brand-dark); }
+.sec span { font-size: 13px; color: var(--muted); }
+
+button.wide { width: 100%; margin-top: 2px; }
+button.sm { min-height: 32px; padding: 4px 12px; font-size: 13px; }
+.card > button.sm { margin-top: 8px; }
+
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.chip { background: var(--brand-soft); color: var(--brand-dark); border-radius: 999px; padding: 3px 10px; font-size: 13px; font-weight: 600; }
+
+.empty { text-align: center; color: var(--muted); margin: 6px 0; font-size: 14px; }
+tfoot td { font-weight: 800; border-top: 2px solid var(--line); border-bottom: none; padding-top: 10px; }
+.card.total { background: #faf8f3; }
+.result { margin-top: 8px; padding-top: 10px; border-top: 2px solid var(--line); font-size: 17px; }
+.result.pos { color: var(--brand-dark); }
+.result.neg { color: var(--danger); }
+.card > .row + .row { margin-top: 6px; }
+
+.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.stepper { display: flex; gap: 6px; align-items: center; }
+.stepper input { min-width: 0; }
+.stepper button { flex: none; padding: 9px 14px; }
+
+@media (max-width: 480px) {
+  .stat b { font-size: 14px; }
+  .stat { padding: 8px 8px; }
+}
